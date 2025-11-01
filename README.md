@@ -20,6 +20,13 @@ python3 -m http.server 8000
 
 Then open [http://localhost:8000/index.html](http://localhost:8000/index.html) in your browser.
 
+## Preview capabilities
+- Image objects are streamed and shown as thumbnails directly in the browser. Object URLs are revoked automatically when you
+  navigate away to avoid memory leaks.
+- Text, JSON, and XML content is fetched in small chunks (up to 64 KB) and displayed inline so you can peek at structured files
+  without downloading the entire object.
+- For other content types, the app provides a secure download link that opens the object in a separate tab via the PAR URL.
+
 ## Containerized deployment
 You can build and run a Docker image that serves the app through Nginx:
 
