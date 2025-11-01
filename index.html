@@ -197,84 +197,6 @@
       word-break: break-word;
     }
 
-    .preview {
-      display: grid;
-      place-items: center;
-      min-height: 240px;
-      border-radius: 18px;
-      background: white;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      padding: 1.25rem;
-      text-align: center;
-      color: #4b5563;
-      overflow: hidden;
-    }
-
-    .preview.placeholder {
-      font-style: italic;
-      color: #6b7280;
-    }
-
-    .preview figure {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      width: 100%;
-    }
-
-    .preview img {
-      width: 100%;
-      max-height: 320px;
-      object-fit: contain;
-      border-radius: 12px;
-      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(14, 165, 233, 0.08));
-    }
-
-    .preview figcaption {
-      font-size: 0.85rem;
-      color: #1f2937;
-      word-break: break-word;
-    }
-
-    .preview .preview-info {
-      font-size: 0.85rem;
-      color: #4b5563;
-    }
-
-    .preview pre {
-      text-align: left;
-      background: #f1f5f9;
-      padding: 1rem;
-      border-radius: 12px;
-      max-height: 320px;
-      overflow: auto;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 0.85rem;
-      white-space: pre-wrap;
-      word-break: break-word;
-      color: #111827;
-    }
-
-    .preview a.preview-link {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.5rem 1rem;
-      border-radius: 999px;
-      background: rgba(37, 99, 235, 0.12);
-      color: #1d4ed8;
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .preview a.preview-link:hover,
-    .preview a.preview-link:focus-visible {
-      background: rgba(37, 99, 235, 0.2);
-      outline: none;
-    }
-
     .placeholder {
       color: #6b7280;
       font-style: italic;
@@ -321,10 +243,6 @@
         <h2>Metadata</h2>
         <div id="metadata" class="metadata placeholder">Select an object to view its metadata.</div>
       </article>
-      <article class="card">
-        <h2>Preview</h2>
-        <div id="preview" class="preview placeholder">Select an object to view its preview.</div>
-      </article>
     </section>
   </main>
   <script>
@@ -333,15 +251,9 @@
     const statusEl = document.getElementById('status');
     const objectsList = document.getElementById('objects');
     const metadataPanel = document.getElementById('metadata');
-    const previewPanel = document.getElementById('preview');
 
     let currentBucketUrl = null;
     let selectedObjectButton = null;
-    let metadataRequestToken = 0;
-    let previewRequestToken = 0;
-    let previewObjectUrl = null;
-    let previewAbortController = null;
-    const PREVIEW_TEXT_LIMIT = 65536;
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -351,11 +263,8 @@
         return;
       }
 
-      metadataRequestToken += 1;
-      previewRequestToken += 1;
       clearObjects();
       setMetadataPlaceholder('Select an object to view its metadata.');
-      setPreviewPlaceholder('Select an object to view its preview.');
       showStatus('Fetching objects…');
 
       try {
@@ -397,7 +306,6 @@
         currentBucketUrl = null;
         showStatus(error.message || 'Unable to fetch objects. Please verify the URL and try again.', true);
         setMetadataPlaceholder('Enter a valid PAR URL to inspect metadata.');
-        setPreviewPlaceholder('Enter a valid PAR URL to preview objects.');
       }
     });
 
@@ -446,11 +354,8 @@
         return;
       }
 
-      metadataRequestToken += 1;
-      const requestToken = metadataRequestToken;
       showStatus(`Fetching metadata for ${objectName}…`);
       setMetadataPlaceholder('Loading metadata…');
-      setPreviewPlaceholder('Loading preview…');
 
       try {
         const objectUrl = new URL(currentBucketUrl.toString());
@@ -463,12 +368,11 @@
         }
 
         const rawLength = Number(response.headers.get('content-length'));
-        const contentType = response.headers.get('content-type') || 'Unknown';
         const metadataEntries = [
           ['Object Name', objectName],
           ['Content Length', formatBytes(rawLength)],
           ['Size (bytes)', Number.isFinite(rawLength) ? rawLength.toLocaleString() : 'Unknown'],
-          ['Content Type', contentType],
+          ['Content Type', response.headers.get('content-type') || 'Unknown'],
           ['ETag', response.headers.get('etag') || '—'],
           ['Last Modified', response.headers.get('last-modified') || 'Unknown']
         ];
@@ -490,33 +394,12 @@
           metadataEntries.push(...opcMetaEntries);
         }
 
-        const downloadLink = createDownloadLink(objectUrl, 'Open object in new tab');
-        metadataEntries.push(['Download', downloadLink]);
-
-        if (requestToken !== metadataRequestToken) {
-          return;
-        }
-
         renderMetadata(metadataEntries);
-
-        if (requestToken !== metadataRequestToken) {
-          return;
-        }
-
-        await renderPreview(contentType, objectUrl, objectName);
-
-        if (requestToken !== metadataRequestToken) {
-          return;
-        }
-
         showStatus(`Metadata loaded for ${objectName}.`, false);
       } catch (error) {
         console.error(error);
-        if (requestToken === metadataRequestToken) {
-          showStatus(error.message || 'Unable to fetch metadata. Please try again.', true);
-          setMetadataPlaceholder('Unable to load metadata.');
-          setPreviewPlaceholder('Unable to load preview.');
-        }
+        showStatus(error.message || 'Unable to fetch metadata. Please try again.', true);
+        setMetadataPlaceholder('Unable to load metadata.');
       }
     }
 
@@ -531,11 +414,7 @@
         label.textContent = key;
         const content = document.createElement('div');
         content.className = 'metadata-value';
-        if (value instanceof Node) {
-          content.appendChild(value);
-        } else {
-          content.textContent = String(value);
-        }
+        content.textContent = String(value);
         block.append(label, content);
         metadataPanel.appendChild(block);
       }
@@ -544,254 +423,6 @@
     function setMetadataPlaceholder(message) {
       metadataPanel.className = 'metadata placeholder';
       metadataPanel.textContent = message;
-    }
-
-    async function renderPreview(contentType, objectUrl, objectName) {
-      if (!previewPanel) {
-        return;
-      }
-
-      releasePreviewResources();
-      previewRequestToken += 1;
-      const requestToken = previewRequestToken;
-      const rawType = (contentType || '').trim();
-      const normalised = rawType.toLowerCase();
-      const baseType = normalised.split(';', 1)[0].trim();
-      const effectiveType = baseType || normalised;
-      const displayType = rawType || effectiveType;
-
-      if (!effectiveType) {
-        setPreviewPlaceholder('Preview unavailable: missing content type.');
-        return;
-      }
-
-      if (effectiveType.startsWith('image/')) {
-        await renderImagePreview(objectUrl, objectName, displayType, requestToken);
-        return;
-      }
-
-      if (isTextLikeType(effectiveType)) {
-        await renderTextPreview(objectUrl, effectiveType, displayType, objectName, requestToken);
-        return;
-      }
-
-      if (requestToken !== previewRequestToken) {
-        return;
-      }
-
-      previewPanel.className = 'preview';
-      previewPanel.innerHTML = '';
-
-      const info = document.createElement('div');
-      info.className = 'preview-info';
-      info.textContent = `Preview not available for ${displayType} content. Download ${objectName} to inspect it.`;
-
-      const link = createDownloadLink(objectUrl, 'Open object');
-      link.classList.add('preview-link');
-
-      previewPanel.append(info, link);
-    }
-
-    async function renderImagePreview(objectUrl, objectName, displayType, requestToken) {
-      previewPanel.className = 'preview';
-      previewPanel.innerHTML = '';
-
-      const figure = document.createElement('figure');
-      const placeholder = document.createElement('div');
-      placeholder.className = 'preview-info';
-      placeholder.textContent = 'Loading image preview…';
-      figure.appendChild(placeholder);
-      previewPanel.appendChild(figure);
-
-      try {
-        previewAbortController = new AbortController();
-        const response = await fetch(objectUrl.toString(), {
-          signal: previewAbortController.signal
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to load preview (HTTP ${response.status}).`);
-        }
-
-        const blob = await response.blob();
-        if (requestToken !== previewRequestToken) {
-          return;
-        }
-
-        previewObjectUrl = URL.createObjectURL(blob);
-
-        const image = document.createElement('img');
-        image.src = previewObjectUrl;
-        image.alt = `Preview of ${objectName}`;
-        image.loading = 'lazy';
-        image.decoding = 'async';
-
-        const caption = document.createElement('figcaption');
-        caption.textContent = `${objectName} • ${displayType}`;
-
-        figure.innerHTML = '';
-        figure.append(image, caption);
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          return;
-        }
-        console.error(error);
-        if (requestToken === previewRequestToken) {
-          setPreviewPlaceholder('Unable to load image preview.');
-        }
-      } finally {
-        previewAbortController = null;
-      }
-    }
-
-    async function renderTextPreview(objectUrl, effectiveType, displayType, objectName, requestToken) {
-      previewPanel.className = 'preview';
-      previewPanel.innerHTML = '';
-
-      const loading = document.createElement('div');
-      loading.className = 'preview-info';
-      loading.textContent = `Loading ${displayType || 'text'} preview…`;
-      previewPanel.appendChild(loading);
-
-      try {
-        previewAbortController = new AbortController();
-        const response = await fetch(objectUrl.toString(), {
-          headers: {
-            Range: `bytes=0-${PREVIEW_TEXT_LIMIT - 1}`
-          },
-          signal: previewAbortController.signal
-        });
-
-        if (!response.ok && response.status !== 206) {
-          throw new Error(`Failed to load preview (HTTP ${response.status}).`);
-        }
-
-        const { text, truncated } = await readLimitedText(response, PREVIEW_TEXT_LIMIT);
-        if (requestToken !== previewRequestToken) {
-          return;
-        }
-
-        let displayText = text;
-        if (isJsonType(effectiveType)) {
-          try {
-            const parsed = JSON.parse(text);
-            displayText = JSON.stringify(parsed, null, 2);
-          } catch (error) {
-            console.warn('Unable to format JSON preview:', error);
-          }
-        }
-
-        const pre = document.createElement('pre');
-        pre.textContent = displayText;
-
-        const caption = document.createElement('div');
-        caption.className = 'preview-info';
-        caption.textContent = truncated
-          ? `Showing the first ${Math.round(PREVIEW_TEXT_LIMIT / 1024)} KB from ${objectName}.`
-          : `Showing ${displayType} content from ${objectName}.`;
-
-        const link = createDownloadLink(objectUrl, 'Open full object');
-        link.classList.add('preview-link');
-
-        previewPanel.innerHTML = '';
-        previewPanel.append(pre, caption, link);
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          return;
-        }
-        console.error(error);
-        if (requestToken === previewRequestToken) {
-          setPreviewPlaceholder('Unable to load preview.');
-        }
-      } finally {
-        previewAbortController = null;
-      }
-    }
-
-    function setPreviewPlaceholder(message) {
-      releasePreviewResources();
-      previewPanel.className = 'preview placeholder';
-      previewPanel.textContent = message;
-    }
-
-    async function readLimitedText(response, byteLimit) {
-      if (response.body && response.body.getReader) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let result = '';
-        let total = 0;
-        let truncated = false;
-
-        let cancelled = false;
-        while (total < byteLimit) {
-          const { value, done } = await reader.read();
-          if (done || !value) {
-            break;
-          }
-
-          const remaining = byteLimit - total;
-          const chunk = value.length > remaining ? value.subarray(0, remaining) : value;
-          result += decoder.decode(chunk, { stream: true });
-          total += chunk.length;
-
-          if (chunk.length < value.length) {
-            truncated = true;
-            await reader.cancel().catch(() => {});
-            cancelled = true;
-            break;
-          }
-        }
-
-        if (!cancelled && total >= byteLimit) {
-          truncated = true;
-          await reader.cancel().catch(() => {});
-        }
-
-        result += decoder.decode();
-        return { text: result, truncated: truncated || total >= byteLimit };
-      }
-
-      const text = await response.text();
-      const charLimit = Math.floor(byteLimit / 2);
-      const truncated = text.length > charLimit;
-      const sliced = truncated ? text.slice(0, charLimit) : text;
-      return { text: sliced, truncated };
-    }
-
-    function isJsonType(type) {
-      return type === 'application/json' || type.endsWith('+json');
-    }
-
-    function isTextLikeType(type) {
-      return (
-        type.startsWith('text/') ||
-        isJsonType(type) ||
-        type === 'application/xml' ||
-        type.endsWith('+xml') ||
-        type === 'application/javascript' ||
-        type === 'application/x-javascript' ||
-        type === 'application/xhtml+xml'
-      );
-    }
-
-    function createDownloadLink(objectUrl, label) {
-      const link = document.createElement('a');
-      link.href = objectUrl.toString();
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = label || 'Open object';
-      return link;
-    }
-
-    function releasePreviewResources() {
-      if (previewAbortController) {
-        previewAbortController.abort();
-        previewAbortController = null;
-      }
-      if (previewObjectUrl) {
-        URL.revokeObjectURL(previewObjectUrl);
-        previewObjectUrl = null;
-      }
     }
 
     function clearObjects() {

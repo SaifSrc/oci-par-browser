@@ -5,7 +5,6 @@ This project is a lightweight, client-side web application for browsing the cont
 ## Features
 - Fetch the complete list of objects within a bucket by following pagination tokens automatically.
 - Display object metadata (size, content type, last modified, custom OPC metadata, etc.) on demand.
-- Inline previews for images plus quick-look text/JSON snippets (safely truncated to protect bandwidth).
 - Responsive, accessible design that works well on both desktop and mobile devices.
 - Comprehensive error handling for malformed, expired, or unauthorized PAR URLs.
 
