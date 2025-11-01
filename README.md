@@ -1,6 +1,39 @@
-# Welcome to GitHub Desktop!
+# OCI Object Storage Browser
 
-This is your README. READMEs are where you can communicate what your project is and how to use it.
+This project is a lightweight, client-side web application for browsing the contents of an Oracle Cloud Infrastructure (OCI) Object Storage bucket using a Pre-Authenticated Request (PAR) URL. It requires no backend services or additional dependencies—just serve the static page and paste a valid bucket-level PAR URL to explore objects and inspect their metadata.
 
-Write your name on line 6, save it, and then head back to GitHub Desktop.
-#URL redirector v1.0
+## Features
+- Fetch the complete list of objects within a bucket by following pagination tokens automatically.
+- Display object metadata (size, content type, last modified, custom OPC metadata, etc.) on demand.
+- Responsive, accessible design that works well on both desktop and mobile devices.
+- Comprehensive error handling for malformed, expired, or unauthorized PAR URLs.
+
+## Quick start
+Open `index.html` in any modern browser and provide a bucket-level PAR URL (ending in `/o/`). The app runs entirely in the browser and does not store any credentials.
+
+## Local development server
+If you prefer to serve the page locally while developing, you can use any static file server. For example, using Python:
+
+```bash
+python3 -m http.server 8000
+```
+
+Then open [http://localhost:8000/index.html](http://localhost:8000/index.html) in your browser.
+
+## Containerized deployment
+You can build and run a Docker image that serves the app through Nginx:
+
+```bash
+# Build the image
+docker build -t oci-par-browser .
+
+# Run the container
+docker run --rm -p 8080:80 oci-par-browser
+```
+
+Visit [http://localhost:8080](http://localhost:8080) to use the app.
+
+## Deployment tips
+- Because the application is static, it can be hosted on any CDN, object storage bucket, or static web host (e.g., GitHub Pages, Netlify, OCI Object Storage Static Website Hosting).
+- Ensure CORS settings on the hosting platform allow the browser to reach OCI Object Storage endpoints.
+- When distributing the page, remind users to manage PAR URLs securely, as they grant direct access to bucket contents.
