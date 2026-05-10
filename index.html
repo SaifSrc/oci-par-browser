@@ -4,12 +4,83 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OCI Object Storage Browser</title>
+  <script>
+    const storedTheme = localStorage.getItem('theme');
+    const savedTheme = storedTheme === 'dark' || storedTheme === 'light' ? storedTheme : null;
+    const initialTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+    document.documentElement.dataset.theme = initialTheme;
+  </script>
   <style>
     :root {
-      color-scheme: light dark;
+      color-scheme: light;
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f7fb;
-      color: #111827;
+      --page-bg: #f5f7fb;
+      --page-gradient-start: rgba(59, 130, 246, 0.15);
+      --page-gradient-end: rgba(96, 165, 250, 0.05);
+      --surface: rgba(255, 255, 255, 0.9);
+      --surface-solid: #ffffff;
+      --surface-muted: #f9fbff;
+      --surface-subtle: #f5f5f5;
+      --text: #111827;
+      --text-strong: #1f2937;
+      --text-muted: #4b5563;
+      --text-soft: #6b7280;
+      --heading: #1e40af;
+      --subheading: #1e3a8a;
+      --accent: #2563eb;
+      --accent-strong: #1d4ed8;
+      --accent-secondary: #7c3aed;
+      --accent-soft: rgba(37, 99, 235, 0.12);
+      --accent-soft-hover: rgba(37, 99, 235, 0.2);
+      --border: rgba(148, 163, 184, 0.3);
+      --border-strong: #cbd5f5;
+      --card-border: rgba(37, 99, 235, 0.08);
+      --shadow: rgba(15, 23, 42, 0.15);
+      --shadow-accent: rgba(79, 70, 229, 0.2);
+      --inset-highlight: rgba(255, 255, 255, 0.7);
+      --preview-gradient-start: rgba(59, 130, 246, 0.08);
+      --preview-gradient-end: rgba(14, 165, 233, 0.08);
+      --code-bg: #f1f5f9;
+      --status-error: #b91c1c;
+      --status-info: #0369a1;
+      background-color: var(--page-bg);
+      color: var(--text);
+    }
+
+    :root.dark {
+      color-scheme: dark;
+      --page-bg: #020617;
+      --page-gradient-start: rgba(37, 99, 235, 0.24);
+      --page-gradient-end: rgba(15, 23, 42, 0.82);
+      --surface: rgba(15, 23, 42, 0.94);
+      --surface-solid: #0f172a;
+      --surface-muted: #111827;
+      --surface-subtle: #1e293b;
+      --text: #e5e7eb;
+      --text-strong: #f8fafc;
+      --text-muted: #cbd5e1;
+      --text-soft: #94a3b8;
+      --heading: #93c5fd;
+      --subheading: #bfdbfe;
+      --accent: #60a5fa;
+      --accent-strong: #bfdbfe;
+      --accent-secondary: #a78bfa;
+      --accent-soft: rgba(96, 165, 250, 0.18);
+      --accent-soft-hover: rgba(96, 165, 250, 0.28);
+      --border: rgba(148, 163, 184, 0.34);
+      --border-strong: rgba(147, 197, 253, 0.42);
+      --card-border: rgba(147, 197, 253, 0.18);
+      --shadow: rgba(0, 0, 0, 0.42);
+      --shadow-accent: rgba(96, 165, 250, 0.22);
+      --inset-highlight: rgba(255, 255, 255, 0.05);
+      --preview-gradient-start: rgba(96, 165, 250, 0.14);
+      --preview-gradient-end: rgba(167, 139, 250, 0.12);
+      --code-bg: #020617;
+      --status-error: #fca5a5;
+      --status-info: #7dd3fc;
+      background-color: var(--page-bg);
+      color: var(--text);
     }
 
     body {
@@ -18,14 +89,50 @@
       display: flex;
       justify-content: center;
       min-height: 100vh;
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(96, 165, 250, 0.05));
+      background: linear-gradient(135deg, var(--page-gradient-start), var(--page-gradient-end));
+      color: var(--text);
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    body,
+    .container,
+    .card,
+    .metadata-field,
+    .preview,
+    .object-button,
+    input,
+    .theme-toggle,
+    ul.object-list li.placeholder,
+    .preview pre {
+      transition: background 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 0.95rem;
+      background: var(--surface-solid);
+      color: var(--text-strong);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 18px var(--shadow);
+    }
+
+    .theme-toggle:hover,
+    .theme-toggle:focus-visible {
+      box-shadow: 0 12px 24px var(--shadow-accent);
+      outline: none;
     }
 
     .container {
       width: min(900px, 100%);
       margin: 3rem 1rem;
-      background: rgba(255, 255, 255, 0.9);
-      box-shadow: 0 15px 40px rgba(15, 23, 42, 0.15);
+      background: var(--surface);
+      box-shadow: 0 15px 40px var(--shadow);
       border-radius: 24px;
       padding: 3rem;
       backdrop-filter: blur(6px);
@@ -34,14 +141,14 @@
     h1 {
       margin-top: 0;
       font-size: clamp(2rem, 4vw, 2.8rem);
-      color: #1e40af;
+      color: var(--heading);
       text-align: center;
     }
 
     p.description {
       text-align: center;
       margin-bottom: 2rem;
-      color: #4b5563;
+      color: var(--text-muted);
     }
 
     form {
@@ -52,21 +159,23 @@
 
     label {
       font-weight: 600;
-      color: #1f2937;
+      color: var(--text-strong);
     }
 
     input[type="url"] {
       padding: 0.85rem 1rem;
       font-size: 1rem;
       border-radius: 12px;
-      border: 1px solid #cbd5f5;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-solid);
+      color: var(--text);
       transition: box-shadow 0.2s ease, border 0.2s ease;
     }
 
     input[type="url"]:focus {
       outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
     }
 
     button {
@@ -77,20 +186,20 @@
       border: none;
       cursor: pointer;
       font-weight: 600;
-      background: linear-gradient(135deg, #2563eb, #7c3aed);
-      color: white;
+      background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+      color: #ffffff;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
     button:hover {
       transform: translateY(-1px);
-      box-shadow: 0 12px 20px rgba(79, 70, 229, 0.2);
+      box-shadow: 0 12px 20px var(--shadow-accent);
     }
 
     .status {
       margin-top: 1rem;
       font-size: 0.95rem;
-      color: #b91c1c;
+      color: var(--status-error);
     }
 
     .layout {
@@ -101,17 +210,49 @@
     }
 
     .card {
-      background: #f9fbff;
+      background: var(--surface-muted);
       border-radius: 18px;
       padding: 1.5rem;
-      border: 1px solid rgba(37, 99, 235, 0.08);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      border: 1px solid var(--card-border);
+      box-shadow: inset 0 1px 0 var(--inset-highlight);
     }
 
     .card h2 {
       margin-top: 0;
       font-size: 1.25rem;
-      color: #1e3a8a;
+      color: var(--subheading);
+    }
+
+    .object-search-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .object-search {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+      color: var(--text);
+      font: inherit;
+      margin-bottom: 1rem;
+      transition: border 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .object-search:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .object-search:disabled {
+      background: var(--surface-subtle);
+      cursor: not-allowed;
+      opacity: 0.7;
     }
 
     ul.object-list {
@@ -137,8 +278,8 @@
       gap: 0.5rem;
       padding: 0.75rem 1rem;
       border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      background: white;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
       cursor: pointer;
       transition: transform 0.15s ease, border 0.15s ease, box-shadow 0.15s ease;
       font: inherit;
@@ -149,14 +290,14 @@
     .object-button:hover,
     .object-button:focus-visible {
       transform: translateY(-1px);
-      border-color: rgba(37, 99, 235, 0.3);
-      box-shadow: 0 8px 16px rgba(79, 70, 229, 0.14);
+      border-color: var(--accent);
+      box-shadow: 0 8px 16px var(--shadow-accent);
       outline: none;
     }
 
     .object-button.active {
-      border-color: rgba(37, 99, 235, 0.55);
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
     }
 
     .object-button .name {
@@ -168,7 +309,7 @@
 
     .object-button .size {
       font-size: 0.85rem;
-      color: #6b7280;
+      color: var(--text-soft);
     }
 
     .metadata {
@@ -179,34 +320,112 @@
     }
 
     .metadata-field {
-      background: white;
+      background: var(--surface-solid);
       border-radius: 12px;
       padding: 1rem;
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid var(--border);
       display: grid;
       gap: 0.5rem;
     }
 
     .metadata-label {
       font-weight: 600;
-      color: #1f2937;
+      color: var(--text-strong);
     }
 
     .metadata-value {
-      color: #4b5563;
+      color: var(--text-muted);
       word-break: break-word;
     }
 
+    .preview {
+      display: grid;
+      place-items: center;
+      min-height: 240px;
+      border-radius: 18px;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      padding: 1.25rem;
+      text-align: center;
+      color: var(--text-muted);
+      overflow: hidden;
+    }
+
+    .preview.placeholder {
+      font-style: italic;
+      color: var(--text-soft);
+    }
+
+    .preview figure {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .preview img {
+      width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 12px 24px var(--shadow);
+      background: linear-gradient(135deg, var(--preview-gradient-start), var(--preview-gradient-end));
+    }
+
+    .preview figcaption {
+      font-size: 0.85rem;
+      color: var(--text-strong);
+      word-break: break-word;
+    }
+
+    .preview .preview-info {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .preview pre {
+      text-align: left;
+      background: var(--code-bg);
+      padding: 1rem;
+      border-radius: 12px;
+      max-height: 320px;
+      overflow: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+    }
+
+    .preview a.preview-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .preview a.preview-link:hover,
+    .preview a.preview-link:focus-visible {
+      background: var(--accent-soft-hover);
+      outline: none;
+    }
+
     .placeholder {
-      color: #6b7280;
+      color: var(--text-soft);
       font-style: italic;
     }
 
     ul.object-list li.placeholder {
       padding: 0.75rem 1rem;
       border-radius: 12px;
-      border: 1px dashed rgba(148, 163, 184, 0.5);
-      background: white;
+      border: 1px dashed var(--border);
+      background: var(--surface-solid);
     }
 
     @media (max-width: 640px) {
@@ -217,6 +436,10 @@
   </style>
 </head>
 <body>
+  <button id="theme-toggle" class="theme-toggle" type="button" title="Theme" aria-label="Toggle theme" aria-pressed="false">
+    <span id="theme-toggle-icon" aria-hidden="true">🌙</span>
+    <span>Theme</span>
+  </button>
   <main class="container">
     <h1>OCI Object Storage Browser</h1>
     <p class="description">
@@ -237,11 +460,24 @@
     <section class="layout">
       <article class="card">
         <h2>Objects</h2>
+        <label for="object-search" class="object-search-label">Filter objects</label>
+        <input
+          id="object-search"
+          class="object-search"
+          type="search"
+          name="object-search"
+          placeholder="Start typing to filter"
+          disabled
+        />
         <ul id="objects" class="object-list" aria-live="polite"></ul>
       </article>
       <article class="card">
         <h2>Metadata</h2>
         <div id="metadata" class="metadata placeholder">Select an object to view its metadata.</div>
+      </article>
+      <article class="card">
+        <h2>Preview</h2>
+        <div id="preview" class="preview placeholder">Select an object to view its preview.</div>
       </article>
     </section>
   </main>
@@ -250,10 +486,66 @@
     const urlInput = document.getElementById('par-url');
     const statusEl = document.getElementById('status');
     const objectsList = document.getElementById('objects');
+    const objectSearchInput = document.getElementById('object-search');
     const metadataPanel = document.getElementById('metadata');
+    const previewPanel = document.getElementById('preview');
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeToggleIcon = document.getElementById('theme-toggle-icon');
+    const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     let currentBucketUrl = null;
     let selectedObjectButton = null;
+    let selectedObjectName = null;
+    let loadedObjects = [];
+    let metadataRequestToken = 0;
+    let previewRequestToken = 0;
+    let previewObjectUrl = null;
+    let previewAbortController = null;
+    const PREVIEW_TEXT_LIMIT = 65536;
+
+    syncThemeToggle(initialTheme);
+
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+        applyTheme(nextTheme, true);
+      });
+    }
+
+    systemThemeQuery.addEventListener('change', (event) => {
+      const stored = localStorage.getItem('theme');
+      if (stored !== 'dark' && stored !== 'light') {
+        applyTheme(event.matches ? 'dark' : 'light', false);
+      }
+    });
+
+    function applyTheme(theme, persist) {
+      const normalisedTheme = theme === 'dark' ? 'dark' : 'light';
+      document.documentElement.classList.toggle('dark', normalisedTheme === 'dark');
+      document.documentElement.dataset.theme = normalisedTheme;
+      if (persist) {
+        localStorage.setItem('theme', normalisedTheme);
+      }
+      syncThemeToggle(normalisedTheme);
+    }
+
+    function syncThemeToggle(theme) {
+      if (!themeToggle) {
+        return;
+      }
+      const isDark = theme === 'dark';
+      themeToggle.setAttribute('aria-pressed', String(isDark));
+      themeToggle.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} theme`);
+      if (themeToggleIcon) {
+        themeToggleIcon.textContent = isDark ? '☀️' : '🌙';
+      }
+    }
+
+    if (objectSearchInput) {
+      objectSearchInput.addEventListener('input', () => {
+        applyObjectFilter();
+      });
+    }
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -263,8 +555,11 @@
         return;
       }
 
+      metadataRequestToken += 1;
+      previewRequestToken += 1;
       clearObjects();
       setMetadataPlaceholder('Select an object to view its metadata.');
+      setPreviewPlaceholder('Select an object to view its preview.');
       showStatus('Fetching objects…');
 
       try {
@@ -275,29 +570,15 @@
           }
         });
 
-        if (objects.length === 0) {
-          objectsList.innerHTML = '<li class="placeholder" role="note">No objects found in this bucket.</li>';
+        loadedObjects = [...objects].sort((a, b) => a.name.localeCompare(b.name));
+        if (objectSearchInput) {
+          objectSearchInput.disabled = loadedObjects.length === 0;
+        }
+
+        if (loadedObjects.length === 0) {
+          renderObjectList([], false);
         } else {
-          const fragment = document.createDocumentFragment();
-          const sortedObjects = [...objects].sort((a, b) => a.name.localeCompare(b.name));
-          for (const object of sortedObjects) {
-            const item = document.createElement('li');
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'object-button';
-            button.title = object.name;
-            const name = document.createElement('span');
-            name.className = 'name';
-            name.textContent = object.name;
-            const size = document.createElement('span');
-            size.className = 'size';
-            size.textContent = formatBytes(Number(object.size));
-            button.append(name, size);
-            button.addEventListener('click', () => handleObjectSelection(object.name, button));
-            item.appendChild(button);
-            fragment.appendChild(item);
-          }
-          objectsList.appendChild(fragment);
+          applyObjectFilter();
         }
 
         showStatus(`Loaded ${objects.length} object${objects.length === 1 ? '' : 's'}.`, false);
@@ -306,6 +587,10 @@
         currentBucketUrl = null;
         showStatus(error.message || 'Unable to fetch objects. Please verify the URL and try again.', true);
         setMetadataPlaceholder('Enter a valid PAR URL to inspect metadata.');
+        setPreviewPlaceholder('Enter a valid PAR URL to preview objects.');
+        if (objectSearchInput) {
+          objectSearchInput.disabled = true;
+        }
       }
     });
 
@@ -354,8 +639,11 @@
         return;
       }
 
+      metadataRequestToken += 1;
+      const requestToken = metadataRequestToken;
       showStatus(`Fetching metadata for ${objectName}…`);
       setMetadataPlaceholder('Loading metadata…');
+      setPreviewPlaceholder('Loading preview…');
 
       try {
         const objectUrl = new URL(currentBucketUrl.toString());
@@ -368,11 +656,12 @@
         }
 
         const rawLength = Number(response.headers.get('content-length'));
+        const contentType = response.headers.get('content-type') || 'Unknown';
         const metadataEntries = [
           ['Object Name', objectName],
           ['Content Length', formatBytes(rawLength)],
           ['Size (bytes)', Number.isFinite(rawLength) ? rawLength.toLocaleString() : 'Unknown'],
-          ['Content Type', response.headers.get('content-type') || 'Unknown'],
+          ['Content Type', contentType],
           ['ETag', response.headers.get('etag') || '—'],
           ['Last Modified', response.headers.get('last-modified') || 'Unknown']
         ];
@@ -394,12 +683,33 @@
           metadataEntries.push(...opcMetaEntries);
         }
 
+        const downloadLink = createDownloadLink(objectUrl, 'Open object in new tab');
+        metadataEntries.push(['Download', downloadLink]);
+
+        if (requestToken !== metadataRequestToken) {
+          return;
+        }
+
         renderMetadata(metadataEntries);
+
+        if (requestToken !== metadataRequestToken) {
+          return;
+        }
+
+        await renderPreview(contentType, objectUrl, objectName);
+
+        if (requestToken !== metadataRequestToken) {
+          return;
+        }
+
         showStatus(`Metadata loaded for ${objectName}.`, false);
       } catch (error) {
         console.error(error);
-        showStatus(error.message || 'Unable to fetch metadata. Please try again.', true);
-        setMetadataPlaceholder('Unable to load metadata.');
+        if (requestToken === metadataRequestToken) {
+          showStatus(error.message || 'Unable to fetch metadata. Please try again.', true);
+          setMetadataPlaceholder('Unable to load metadata.');
+          setPreviewPlaceholder('Unable to load preview.');
+        }
       }
     }
 
@@ -414,7 +724,11 @@
         label.textContent = key;
         const content = document.createElement('div');
         content.className = 'metadata-value';
-        content.textContent = String(value);
+        if (value instanceof Node) {
+          content.appendChild(value);
+        } else {
+          content.textContent = String(value);
+        }
         block.append(label, content);
         metadataPanel.appendChild(block);
       }
@@ -425,14 +739,337 @@
       metadataPanel.textContent = message;
     }
 
+    async function renderPreview(contentType, objectUrl, objectName) {
+      if (!previewPanel) {
+        return;
+      }
+
+      releasePreviewResources();
+      previewRequestToken += 1;
+      const requestToken = previewRequestToken;
+      const rawType = (contentType || '').trim();
+      const normalised = rawType.toLowerCase();
+      const baseType = normalised.split(';', 1)[0].trim();
+      const effectiveType = baseType || normalised;
+      const displayType = rawType || effectiveType;
+
+      if (!effectiveType) {
+        setPreviewPlaceholder('Preview unavailable: missing content type.');
+        return;
+      }
+
+      if (effectiveType.startsWith('image/')) {
+        await renderImagePreview(objectUrl, objectName, displayType, requestToken);
+        return;
+      }
+
+      if (isTextLikeType(effectiveType)) {
+        await renderTextPreview(objectUrl, effectiveType, displayType, objectName, requestToken);
+        return;
+      }
+
+      if (requestToken !== previewRequestToken) {
+        return;
+      }
+
+      previewPanel.className = 'preview';
+      previewPanel.innerHTML = '';
+
+      const info = document.createElement('div');
+      info.className = 'preview-info';
+      info.textContent = `Preview not available for ${displayType} content. Download ${objectName} to inspect it.`;
+
+      const link = createDownloadLink(objectUrl, 'Open object');
+      link.classList.add('preview-link');
+
+      previewPanel.append(info, link);
+    }
+
+    async function renderImagePreview(objectUrl, objectName, displayType, requestToken) {
+      previewPanel.className = 'preview';
+      previewPanel.innerHTML = '';
+
+      const figure = document.createElement('figure');
+      const placeholder = document.createElement('div');
+      placeholder.className = 'preview-info';
+      placeholder.textContent = 'Loading image preview…';
+      figure.appendChild(placeholder);
+      previewPanel.appendChild(figure);
+
+      try {
+        previewAbortController = new AbortController();
+        const response = await fetch(objectUrl.toString(), {
+          signal: previewAbortController.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load preview (HTTP ${response.status}).`);
+        }
+
+        const blob = await response.blob();
+        if (requestToken !== previewRequestToken) {
+          return;
+        }
+
+        previewObjectUrl = URL.createObjectURL(blob);
+
+        const image = document.createElement('img');
+        image.src = previewObjectUrl;
+        image.alt = `Preview of ${objectName}`;
+        image.loading = 'lazy';
+        image.decoding = 'async';
+
+        const caption = document.createElement('figcaption');
+        caption.textContent = `${objectName} • ${displayType}`;
+
+        figure.innerHTML = '';
+        figure.append(image, caption);
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        console.error(error);
+        if (requestToken === previewRequestToken) {
+          setPreviewPlaceholder('Unable to load image preview.');
+        }
+      } finally {
+        previewAbortController = null;
+      }
+    }
+
+    async function renderTextPreview(objectUrl, effectiveType, displayType, objectName, requestToken) {
+      previewPanel.className = 'preview';
+      previewPanel.innerHTML = '';
+
+      const loading = document.createElement('div');
+      loading.className = 'preview-info';
+      loading.textContent = `Loading ${displayType || 'text'} preview…`;
+      previewPanel.appendChild(loading);
+
+      try {
+        previewAbortController = new AbortController();
+        const response = await fetch(objectUrl.toString(), {
+          headers: {
+            Range: `bytes=0-${PREVIEW_TEXT_LIMIT - 1}`
+          },
+          signal: previewAbortController.signal
+        });
+
+        if (!response.ok && response.status !== 206) {
+          throw new Error(`Failed to load preview (HTTP ${response.status}).`);
+        }
+
+        const { text, truncated } = await readLimitedText(response, PREVIEW_TEXT_LIMIT);
+        if (requestToken !== previewRequestToken) {
+          return;
+        }
+
+        let displayText = text;
+        if (isJsonType(effectiveType)) {
+          try {
+            const parsed = JSON.parse(text);
+            displayText = JSON.stringify(parsed, null, 2);
+          } catch (error) {
+            console.warn('Unable to format JSON preview:', error);
+          }
+        }
+
+        const pre = document.createElement('pre');
+        pre.textContent = displayText;
+
+        const caption = document.createElement('div');
+        caption.className = 'preview-info';
+        caption.textContent = truncated
+          ? `Showing the first ${Math.round(PREVIEW_TEXT_LIMIT / 1024)} KB from ${objectName}.`
+          : `Showing ${displayType} content from ${objectName}.`;
+
+        const link = createDownloadLink(objectUrl, 'Open full object');
+        link.classList.add('preview-link');
+
+        previewPanel.innerHTML = '';
+        previewPanel.append(pre, caption, link);
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+        console.error(error);
+        if (requestToken === previewRequestToken) {
+          setPreviewPlaceholder('Unable to load preview.');
+        }
+      } finally {
+        previewAbortController = null;
+      }
+    }
+
+    function setPreviewPlaceholder(message) {
+      releasePreviewResources();
+      previewPanel.className = 'preview placeholder';
+      previewPanel.textContent = message;
+    }
+
+    async function readLimitedText(response, byteLimit) {
+      if (response.body && response.body.getReader) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let result = '';
+        let total = 0;
+        let truncated = false;
+
+        let cancelled = false;
+        while (total < byteLimit) {
+          const { value, done } = await reader.read();
+          if (done || !value) {
+            break;
+          }
+
+          const remaining = byteLimit - total;
+          const chunk = value.length > remaining ? value.subarray(0, remaining) : value;
+          result += decoder.decode(chunk, { stream: true });
+          total += chunk.length;
+
+          if (chunk.length < value.length) {
+            truncated = true;
+            await reader.cancel().catch(() => {});
+            cancelled = true;
+            break;
+          }
+        }
+
+        if (!cancelled && total >= byteLimit) {
+          truncated = true;
+          await reader.cancel().catch(() => {});
+        }
+
+        result += decoder.decode();
+        return { text: result, truncated: truncated || total >= byteLimit };
+      }
+
+      const text = await response.text();
+      const charLimit = Math.floor(byteLimit / 2);
+      const truncated = text.length > charLimit;
+      const sliced = truncated ? text.slice(0, charLimit) : text;
+      return { text: sliced, truncated };
+    }
+
+    function isJsonType(type) {
+      return type === 'application/json' || type.endsWith('+json');
+    }
+
+    function isTextLikeType(type) {
+      return (
+        type.startsWith('text/') ||
+        isJsonType(type) ||
+        type === 'application/xml' ||
+        type.endsWith('+xml') ||
+        type === 'application/javascript' ||
+        type === 'application/x-javascript' ||
+        type === 'application/xhtml+xml'
+      );
+    }
+
+    function createDownloadLink(objectUrl, label) {
+      const link = document.createElement('a');
+      link.href = objectUrl.toString();
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = label || 'Open object';
+      return link;
+    }
+
+    function releasePreviewResources() {
+      if (previewAbortController) {
+        previewAbortController.abort();
+        previewAbortController = null;
+      }
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+        previewObjectUrl = null;
+      }
+    }
+
+    function renderObjectList(list, filterActive) {
+      objectsList.innerHTML = '';
+
+      if (!list.length) {
+        const placeholder = document.createElement('li');
+        placeholder.className = 'placeholder';
+        placeholder.setAttribute('role', 'note');
+        placeholder.textContent = filterActive
+          ? 'No objects match your filter.'
+          : 'No objects found in this bucket.';
+        objectsList.appendChild(placeholder);
+        selectedObjectButton = null;
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      let nextSelectedButton = null;
+      for (const object of list) {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'object-button';
+        button.title = object.name;
+
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = object.name;
+
+        const size = document.createElement('span');
+        size.className = 'size';
+        size.textContent = formatBytes(Number(object.size));
+
+        button.append(name, size);
+        button.addEventListener('click', () => handleObjectSelection(object.name, button));
+
+        if (selectedObjectName && object.name === selectedObjectName) {
+          button.classList.add('active');
+          nextSelectedButton = button;
+        }
+
+        item.appendChild(button);
+        fragment.appendChild(item);
+      }
+
+      objectsList.appendChild(fragment);
+      selectedObjectButton = nextSelectedButton;
+    }
+
+    function applyObjectFilter() {
+      if (!objectSearchInput) {
+        return;
+      }
+      const query = objectSearchInput.value.trim().toLowerCase();
+      if (!loadedObjects.length) {
+        renderObjectList([], false);
+        return;
+      }
+
+      if (!query) {
+        renderObjectList(loadedObjects, false);
+        return;
+      }
+
+      const filtered = loadedObjects.filter((object) =>
+        object.name.toLowerCase().includes(query)
+      );
+      renderObjectList(filtered, true);
+    }
+
     function clearObjects() {
       objectsList.innerHTML = '';
+      loadedObjects = [];
       selectedObjectButton = null;
+      selectedObjectName = null;
+      if (objectSearchInput) {
+        objectSearchInput.value = '';
+        objectSearchInput.disabled = true;
+      }
     }
 
     function showStatus(message, isError = false) {
       statusEl.textContent = message;
-      statusEl.style.color = isError ? '#b91c1c' : '#0369a1';
+      statusEl.style.color = isError ? 'var(--status-error)' : 'var(--status-info)';
     }
 
     function formatBytes(bytes) {
@@ -478,6 +1115,7 @@
       if (selectedObjectButton) {
         selectedObjectButton.classList.remove('active');
       }
+      selectedObjectName = objectName;
       selectedObjectButton = button;
       selectedObjectButton.classList.add('active');
       fetchMetadata(objectName);
